@@ -63,22 +63,48 @@ export function CasePicker() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold">CS:GO Case Picker</h1>
+      <div className="flex justify-between">
+        <h1 className="text-2xl font-bold">CS:GO Case Picker</h1>
+        <div>
+          {!!items.length ? (
+            <button
+              onClick={() => setItems([])}
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+            >
+              Deselect all
+            </button>
+          ) : (
+            <button
+              onClick={() => setItems(CS_CASE_NAMES)}
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+            >
+              Select all
+            </button>
+          )}
+          <button className="ml-2 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+            <a href={url}>Open in Steam</a>
+          </button>
+        </div>
+      </div>
+
       <div className="grid grid-cols-3">
         {CS_CASE_NAMES.map((item) => (
           <div key={item}>
-            <input
-              type="checkbox"
-              checked={items.includes(item)}
-              onChange={() => {
-                if (items.includes(item)) {
-                  setItems(items.filter((i) => i !== item));
-                } else {
-                  setItems([...items, item]);
-                }
-              }}
-            />
-            <label>{item}</label>
+            <label>
+              <input
+                className="mr-2"
+                type="checkbox"
+                checked={items.includes(item)}
+                onChange={() => {
+                  if (items.includes(item)) {
+                    setItems(items.filter((i) => i !== item));
+                  } else {
+                    setItems([...items, item]);
+                  }
+                }}
+              />
+              {item}
+            </label>
           </div>
         ))}
         <div className="flex">
