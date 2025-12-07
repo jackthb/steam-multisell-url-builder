@@ -98,7 +98,7 @@ export function CasePicker() {
       setSelected([]); // Clear selection on new fetch
 
       if (data.cases?.length === 0) {
-        setError("No cases found in inventory. Make sure your inventory is public and you have CS2 cases.");
+        setError(data.message || "No cases found. You can use Manual Selection mode instead.");
       }
     } catch (e) {
       setError(`Failed to fetch inventory: ${e}`);
