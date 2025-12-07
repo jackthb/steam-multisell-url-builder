@@ -11,8 +11,16 @@ export async function GET(request: NextRequest) {
     // Try to extract or resolve Steam64 ID
     const steamIdClean = await resolveSteamId(steamId.trim());
     if (!steamIdClean) {
+      // Check if it looks like a vanity URL that failed to resolve
+      const looksLikeVanity = steamId.includes("/id/") || /^[a-zA-Z]/.test(steamId.trim());
+      if (looksLikeVanity) {
+        return NextResponse.json(
+          { error: "Couldn't resolve custom URL. Please use your Steam64 ID instead (find it at steamid.io)" },
+          { status: 400 }
+        );
+      }
       return NextResponse.json(
-        { error: "Invalid Steam ID. Use your 17-digit Steam64 ID or profile URL." },
+        { error: "Invalid Steam ID. Use your 17-digit Steam64 ID (find it at steamid.io)" },
         { status: 400 }
       );
     }
