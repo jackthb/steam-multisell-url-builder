@@ -28,10 +28,23 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    // Read response body
+    const text = await response.text();
+
     // Handle non-OK responses
     if (!response.ok) {
+      // Try to get error details from response body
+      let errorDetail = "";
+      try {
+        const errData = JSON.parse(text);
+        if (errData.error) errorDetail = `: ${errData.error}`;
+      } catch {
+        // Not JSON, use text if short
+        if (text && text.length < 200) errorDetail = `: ${text}`;
+      }
+
       if (response.status === 403) {
-        return NextResponse.json({ error: "Inventory is private or profile doesn't exist" }, { status: 403 });
+        return NextResponse.json({ error: "Inventory is private. Make sure your Steam inventory is set to public." }, { status: 403 });
       }
       if (response.status === 429) {
         return NextResponse.json({ error: "Rate limited by Steam, try again in a few minutes" }, { status: 429 });
@@ -40,7 +53,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: "Steam servers are having issues, try again later" }, { status: 502 });
       }
       return NextResponse.json(
-        { error: `Steam returned error ${response.status}` },
+        { error: `Steam error${errorDetail}`, debug: { status: response.status, steamId: steamIdClean } },
         { status: response.status }
       );
     }
@@ -48,18 +61,22 @@ export async function GET(request: NextRequest) {
     // Try to parse JSON
     let data;
     try {
-      const text = await response.text();
       if (!text || text === "null") {
-        return NextResponse.json({ error: "Inventory is empty or private" }, { status: 404 });
+        return NextResponse.json({ error: "No inventory data returned. Your inventory might be empty or private." }, { status: 404 });
       }
       data = JSON.parse(text);
     } catch {
-      return NextResponse.json({ error: "Invalid response from Steam" }, { status: 502 });
+      return NextResponse.json({ error: "Invalid response from Steam", debug: { text: text.substring(0, 200) } }, { status: 502 });
     }
 
     // Check for Steam error responses
     if (data.error) {
-      return NextResponse.json({ error: data.error }, { status: 400 });
+      return NextResponse.json({ error: `Steam: ${data.error}` }, { status: 400 });
+    }
+
+    // Check for success flag
+    if (data.success === 0) {
+      return NextResponse.json({ error: "Steam returned unsuccessful response" }, { status: 400 });
     }
 
     // Parse and return only case items
