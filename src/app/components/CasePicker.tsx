@@ -86,7 +86,11 @@ export function CasePicker() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Failed to fetch inventory");
+        let errMsg = data.error || "Failed to fetch inventory";
+        if (data.debug) {
+          errMsg += ` (Debug: ${JSON.stringify(data.debug)})`;
+        }
+        setError(errMsg);
         return;
       }
 
@@ -94,10 +98,10 @@ export function CasePicker() {
       setSelected([]); // Clear selection on new fetch
 
       if (data.cases?.length === 0) {
-        setError("No cases found in inventory (or inventory is private)");
+        setError("No cases found in inventory. Make sure your inventory is public and you have CS2 cases.");
       }
-    } catch {
-      setError("Failed to fetch inventory");
+    } catch (e) {
+      setError(`Failed to fetch inventory: ${e}`);
     } finally {
       setLoading(false);
     }
