@@ -33,14 +33,22 @@ export async function GET(request: NextRequest) {
 
     // Handle non-OK responses
     if (!response.ok) {
+      // 400 with null/empty body usually means empty inventory for this game
+      if (response.status === 400 && (!text || text === "null")) {
+        return NextResponse.json({
+          cases: [],
+          steamId: steamIdClean,
+          message: "No CS2 inventory found. You might not have any CS2 items."
+        });
+      }
+
       // Try to get error details from response body
       let errorDetail = "";
       try {
         const errData = JSON.parse(text);
         if (errData.error) errorDetail = `: ${errData.error}`;
       } catch {
-        // Not JSON, use text if short
-        if (text && text.length < 200) errorDetail = `: ${text}`;
+        if (text && text.length < 200 && text !== "null") errorDetail = `: ${text}`;
       }
 
       if (response.status === 403) {
