@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import Image from "next/image";
+import { useEffect, useState } from "react";
 import { ALL_CONTAINERS } from "../data/cases";
 
 interface InventoryItem {
@@ -14,6 +15,14 @@ interface SelectedItem {
   name: string;
   quantity: number; // how many selected (up to max owned)
   maxQuantity: number; // how many owned
+}
+
+interface SteamUser {
+  steamId: string;
+  profileUrl: string;
+  personaName: string | null;
+  avatarUrl: string | null;
+  visibilityState: string | null;
 }
 
 const CSGO_ID = 730;
@@ -35,6 +44,9 @@ function buildSteamUrl(items: SelectedItem[]): string {
 }
 
 export function CasePicker() {
+  const [user, setUser] = useState<SteamUser | null>(null);
+  const [checkingSession, setCheckingSession] = useState(true);
+
   // Mode: "inventory" (fetch from Steam) or "manual" (use full list)
   const [mode, setMode] = useState<"inventory" | "manual">("inventory");
 
@@ -55,6 +67,33 @@ export function CasePicker() {
   // Copy feedback
   const [copied, setCopied] = useState(false);
 
+  useEffect(() => {
+    async function loadSignedInUser() {
+      const authError = new URLSearchParams(window.location.search).get("authError");
+      if (authError) {
+        setError(authError);
+      }
+
+      try {
+        const res = await fetch("/api/auth/steam/session");
+        if (!res.ok) return;
+
+        const data = await res.json();
+        if (!data.user) return;
+
+        setUser(data.user);
+        setSteamId(data.user.steamId);
+        await fetchInventory(true);
+      } finally {
+        setCheckingSession(false);
+      }
+    }
+
+    loadSignedInUser();
+    // Run once on first page load so the post-Steam redirect can hydrate the UI.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Items to display based on mode
   const availableItems: InventoryItem[] =
     mode === "inventory"
@@ -72,8 +111,8 @@ export function CasePicker() {
   );
 
   // Fetch inventory from Steam
-  async function fetchInventory() {
-    if (!steamId.trim()) {
+  async function fetchInventory(useSignedInSession = false) {
+    if (!useSignedInSession && !steamId.trim()) {
       setError("Please enter a Steam ID");
       return;
     }
@@ -82,7 +121,8 @@ export function CasePicker() {
     setError(null);
 
     try {
-      const res = await fetch(`/api/inventory?steamid=${encodeURIComponent(steamId)}`);
+      const url = useSignedInSession ? "/api/inventory" : `/api/inventory?steamid=${encodeURIComponent(steamId)}`;
+      const res = await fetch(url);
       const data = await res.json();
 
       if (!res.ok) {
@@ -171,6 +211,61 @@ export function CasePicker() {
     <div style={{ maxWidth: 800, fontFamily: "system-ui, sans-serif" }}>
       <h1 style={{ marginBottom: 16, fontSize: 24 }}>Steam Multi-Sell Builder</h1>
 
+      {/* Steam Sign In */}
+      <div style={{ marginBottom: 16, padding: 12, border: "1px solid #ccc" }}>
+        {user ? (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              {user.avatarUrl && (
+                <Image
+                  src={user.avatarUrl}
+                  alt="Steam avatar"
+                  width={48}
+                  height={48}
+                  style={{ borderRadius: 4 }}
+                />
+              )}
+              <div>
+                <div style={{ fontWeight: 700 }}>{user.personaName || "Signed in with Steam"}</div>
+                <div style={{ fontSize: 13, color: "#555" }}>Steam64: {user.steamId}</div>
+                {user.visibilityState && (
+                  <div style={{ fontSize: 13, color: "#555" }}>Profile visibility: {user.visibilityState}</div>
+                )}
+                <a href={user.profileUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13 }}>
+                  View Steam profile
+                </a>
+              </div>
+            </div>
+            <form action="/api/auth/steam/logout" method="post">
+              <button type="submit" style={{ padding: "6px 12px", cursor: "pointer" }}>
+                Sign out
+              </button>
+            </form>
+          </div>
+        ) : (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <div>
+              <strong>Sign in with Steam</strong>
+              <div style={{ fontSize: 13, color: "#555" }}>
+                Load your Steam profile and CS2 cases without pasting your Steam ID.
+              </div>
+            </div>
+            <a
+              href="/api/auth/steam/login"
+              style={{
+                padding: "8px 14px",
+                background: "#1a1a1a",
+                color: "#fff",
+                textDecoration: "none",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {checkingSession ? "Checking..." : "Sign in with Steam"}
+            </a>
+          </div>
+        )}
+      </div>
+
       {/* Mode Toggle */}
       <div style={{ marginBottom: 16 }}>
         <label style={{ marginRight: 16 }}>
@@ -217,7 +312,7 @@ export function CasePicker() {
                 onKeyDown={(e) => e.key === "Enter" && fetchInventory()}
               />
               <button
-                onClick={fetchInventory}
+                onClick={() => fetchInventory()}
                 disabled={loading}
                 style={{
                   padding: "6px 16px",
@@ -226,6 +321,18 @@ export function CasePicker() {
               >
                 {loading ? "Loading..." : "Load Inventory"}
               </button>
+              {user && (
+                <button
+                  onClick={() => fetchInventory(true)}
+                  disabled={loading}
+                  style={{
+                    padding: "6px 16px",
+                    cursor: loading ? "wait" : "pointer",
+                  }}
+                >
+                  Load Mine
+                </button>
+              )}
             </div>
           </div>
           {error && <div style={{ color: "red", fontSize: 14 }}>{error}</div>}

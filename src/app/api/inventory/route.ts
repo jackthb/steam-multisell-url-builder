@@ -1,18 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
+import { STEAM_SESSION_COOKIE, readSteamSessionToken } from "../../lib/steamAuth";
 
 export async function GET(request: NextRequest) {
   const steamId = request.nextUrl.searchParams.get("steamid");
+  const session = readSteamSessionToken(request.cookies.get(STEAM_SESSION_COOKIE)?.value);
 
-  if (!steamId) {
-    return NextResponse.json({ error: "Missing steamid parameter" }, { status: 400 });
+  if (!steamId && !session) {
+    return NextResponse.json({ error: "Missing steamid parameter or Steam sign-in" }, { status: 400 });
   }
 
   try {
     // Try to extract or resolve Steam64 ID
-    const steamIdClean = await resolveSteamId(steamId.trim());
+    const steamIdClean = steamId ? await resolveSteamId(steamId.trim()) : session?.steamId;
     if (!steamIdClean) {
       // Check if it looks like a vanity URL that failed to resolve
-      const looksLikeVanity = steamId.includes("/id/") || /^[a-zA-Z]/.test(steamId.trim());
+      const looksLikeVanity = steamId?.includes("/id/") || /^[a-zA-Z]/.test(steamId?.trim() || "");
       if (looksLikeVanity) {
         return NextResponse.json(
           { error: "Couldn't resolve custom URL. Please use your Steam64 ID instead (find it at steamid.io)" },
