@@ -4,6 +4,7 @@ import { STEAM_SESSION_COOKIE, readSteamSessionToken } from "../../lib/steamAuth
 export async function GET(request: NextRequest) {
   const steamId = request.nextUrl.searchParams.get("steamid");
   const session = readSteamSessionToken(request.cookies.get(STEAM_SESSION_COOKIE)?.value);
+  const isUsingSignedInSession = !steamId && !!session;
 
   if (!steamId && !session) {
     return NextResponse.json({ error: "Missing steamid parameter or Steam sign-in" }, { status: 400 });
@@ -80,7 +81,10 @@ export async function GET(request: NextRequest) {
     let data;
     try {
       if (!text || text === "null") {
-        return NextResponse.json({ error: "No inventory data returned. Your inventory might be empty or private." }, { status: 404 });
+        const error = isUsingSignedInSession
+          ? "Steam sign-in only confirms your Steam ID; it does not grant access to a private inventory. Make your Steam inventory public, then try again."
+          : "No inventory data returned. The inventory might be empty or private.";
+        return NextResponse.json({ error }, { status: 404 });
       }
       data = JSON.parse(text);
     } catch {

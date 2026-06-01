@@ -247,7 +247,7 @@ export function CasePicker() {
             <div>
               <strong>Sign in with Steam</strong>
               <div style={{ fontSize: 13, color: "#555" }}>
-                Load your Steam profile and CS2 cases without pasting your Steam ID.
+                Load your Steam profile without pasting your Steam ID. Steam still requires a public inventory to load cases.
               </div>
             </div>
             <a
@@ -337,7 +337,7 @@ export function CasePicker() {
           </div>
           {error && <div style={{ color: "red", fontSize: 14 }}>{error}</div>}
           <div style={{ fontSize: 12, color: "#666", marginTop: 8 }}>
-            Your inventory must be public. Find your Steam64 ID at{" "}
+            Steam sign-in only identifies your account; Steam does not let this app read private inventories. Your inventory must be public. Find your Steam64 ID at{" "}
             <a href="https://steamid.io" target="_blank" rel="noopener noreferrer">
               steamid.io
             </a>
